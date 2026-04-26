@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Chessboard Counter</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #050505; color: #ffffff;
+            font-family: 'Inter', -apple-system, sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 40px 20px; min-height: 100vh;
+        }
+        .header { text-align: center; margin-bottom: 30px; }
+        h1 { font-size: 2.2rem; letter-spacing: 2px; margin-bottom: 5px; color: #fff; }
+        .subtitle { color: #666; font-size: 0.9rem; }
+
+        .stat-banner {
+            display: flex; gap: 40px; margin-bottom: 30px;
+            background: #111; padding: 20px 40px; border-radius: 12px;
+            border: 1px solid #222;
+        }
+        .stat-item { text-align: center; }
+        .stat-label { font-size: 0.7rem; color: #666; text-transform: uppercase; margin-bottom: 5px; }
+        .stat-value { font-size: 1.8rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+        .main-layout {
+            display: flex; gap: 30px; align-items: flex-start;
+            max-width: 1100px; width: 100%; justify-content: center;
+        }
+
+        .canvas-area { position: relative; }
+        #rectCanvas {
+            background: #0a0a0a; border-radius: 8px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5), 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+
+        .selector-panel {
+            background: #111; border: 1px solid #222;
+            padding: 20px; border-radius: 12px; width: 340px;
+        }
+        .grid-title { font-size: 0.8rem; font-weight: 600; color: #888; margin-bottom: 15px; }
+        
+        .dim-grid {
+            display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
+            margin-bottom: 15px;
+        }
+        .dim-box {
+            aspect-ratio: 1; background: #1a1a1a; border: 1px solid #333;
+            font-size: 0.6rem; display: flex; align-items: center;
+            justify-content: center; cursor: pointer; border-radius: 3px;
+            color: #555; transition: all 0.2s;
+        }
+        .dim-box:hover { border-color: #555; color: #fff; }
+        .dim-box.active {
+            background: #3B82F6; border-color: #60A5FA; color: white;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .legend {
+            font-size: 0.8rem; color: #555; line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        /* Simplified Speed Controller */
+        .speed-control-container {
+            border-top: 1px solid #222;
+            padding-top: 20px;
+        }
+        .speed-labels {
+            display: flex; justify-content: space-between;
+            font-size: 0.65rem; color: #666; text-transform: uppercase;
+            font-weight: 700; margin-bottom: 8px;
+        }
+        input[type=range] { 
+            cursor: pointer; width: 100%; accent-color: #3B82F6; 
+            background: transparent; height: 6px;
+        }
+
+        .controls {
+            margin-top: 30px; display: flex; gap: 15px;
+        }
+        .btn {
+            background: #1a1a1a; border: 1px solid #333; color: #fff;
+            padding: 12px 25px; border-radius: 8px; cursor: pointer;
+            font-weight: 600; transition: 0.2s;
+        }
+        .btn:hover { background: #252525; border-color: #444; }
+        .btn.primary { background: #3B82F6; border-color: #60A5FA; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>CHESSBOARD COUNTER</h1>
+        <p class="subtitle">Visualizing all 1,296 possible combinations</p>
+    </div>
+
+    <div class="stat-banner">
+        <div class="stat-item">
+            <div class="stat-label">Current Dimension</div>
+            <div id="currentDim" class="stat-value" style="color: #3B82F6;">1 x 1</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Found in this Size</div>
+            <div id="dimCount" class="stat-value">64</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Global Progress</div>
+            <div id="globalTotal" class="stat-value" style="color: #888;">0 / 1296</div>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="canvas-area">
+            <canvas id="rectCanvas" width="480" height="480"></canvas>
+            
+            <div class="controls">
+                <button class="btn" id="prevBtn">PREV</button>
+                <button class="btn primary" id="playBtn">PLAY ALL</button>
+                <button class="btn" id="nextBtn">NEXT</button>
+                <button class="btn" id="resetBtn">RESET</button>
+            </div>
+        </div>
+
+        <div class="selector-panel">
+            <div class="grid-title">SELECT DIMENSION (W x H)</div>
+            <div class="dim-grid" id="dimGrid"></div>
+            
+            <div class="legend">
+                <p>• Rectangles = Choose 2 vertical lines & 2 horizontal lines.</p>
+                <p>• Clicking a box above jumps to that specific shape set.</p>
+            </div>
+
+            <div class="speed-control-container">
+                <div class="speed-labels">
+                    <span>Slow</span>
+                    <span>Fast</span>
+                </div>
+                <input type="range" id="speedSlider" min="5" max="500" value="50" dir="rtl">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('rectCanvas');
+        const ctx = canvas.getContext('2d');
+        const GRID_SIZE = 8;
+        const CELL = canvas.width / GRID_SIZE;
+
+        let steps = [];
+        let currentIdx = 0;
+        let isPlaying = false;
+        let playTimeout = null;
+
+        function initData() {
+            steps = [];
+            const gridEl = document.getElementById('dimGrid');
+            
+            for (let h = 1; h <= 8; h++) {
+                for (let w = 1; w <= 8; w++) {
+                    const box = document.createElement('div');
+                    box.className = 'dim-box';
+                    box.innerText = `${w}x${h}`;
+                    box.id = `box-${w}-${h}`;
+                    box.onclick = () => jumpToDim(w, h);
+                    gridEl.appendChild(box);
+
+                    for (let y = 0; y <= 8 - h; y++) {
+                        for (let x = 0; x <= 8 - w; x++) {
+                            steps.push({ x, y, w, h });
+                        }
+                    }
+                }
+            }
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    ctx.fillStyle = (r + c) % 2 === 0 ? '#1a1a1a' : '#0d0d0d';
+                    ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+                    ctx.strokeStyle = '#222';
+                    ctx.strokeRect(c * CELL, r * CELL, CELL, CELL);
+                }
+            }
+        }
+
+        function render() {
+            drawBoard();
+            if (currentIdx > 0) {
+                const rect = steps[currentIdx - 1];
+                ctx.save();
+                ctx.strokeStyle = '#3B82F6';
+                ctx.lineWidth = 4;
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#3B82F6';
+                const rx = rect.x * CELL + 3;
+                const ry = rect.y * CELL + 3;
+                const rw = rect.w * CELL - 6;
+                const rh = rect.h * CELL - 6;
+                ctx.strokeRect(rx, ry, rw, rh);
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+                ctx.fillRect(rx, ry, rw, rh);
+                ctx.restore();
+            }
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('globalTotal').innerText = `${currentIdx} / 1296`;
+            if (currentIdx > 0) {
+                const rect = steps[currentIdx - 1];
+                document.getElementById('currentDim').innerText = `${rect.w} x ${rect.h}`;
+                const totalInDim = (8 - rect.w + 1) * (8 - rect.h + 1);
+                let countInDim = 0;
+                for(let i=0; i<currentIdx; i++) {
+                    if(steps[i].w === rect.w && steps[i].h === rect.h) countInDim++;
+                }
+                document.getElementById('dimCount').innerText = `${countInDim} / ${totalInDim}`;
+                document.querySelectorAll('.dim-box').forEach(b => b.classList.remove('active'));
+                document.getElementById(`box-${rect.w}-${rect.h}`).classList.add('active');
+            }
+        }
+
+        function jumpToDim(w, h) {
+            stopPlay();
+            const idx = steps.findIndex(s => s.w === w && s.h === h);
+            currentIdx = idx + 1;
+            render();
+        }
+
+        function autoStep() {
+            if (currentIdx < steps.length) {
+                currentIdx++;
+                render();
+                playTimeout = setTimeout(autoStep, document.getElementById('speedSlider').value);
+            } else {
+                stopPlay();
+            }
+        }
+
+        function next() {
+            if (currentIdx < steps.length) {
+                currentIdx++;
+                render();
+            } else {
+                stopPlay();
+            }
+        }
+
+        function prev() {
+            if (currentIdx > 1) {
+                currentIdx--;
+                render();
+            }
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                stopPlay();
+            } else {
+                if (currentIdx >= steps.length) currentIdx = 0;
+                isPlaying = true;
+                document.getElementById('playBtn').innerText = 'PAUSE';
+                autoStep();
+            }
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            clearTimeout(playTimeout);
+            document.getElementById('playBtn').innerText = 'PLAY ALL';
+        }
+
+        document.getElementById('playBtn').onclick = togglePlay;
+        document.getElementById('nextBtn').onclick = next;
+        document.getElementById('prevBtn').onclick = prev;
+        document.getElementById('resetBtn').onclick = () => { stopPlay(); currentIdx = 0; render(); };
+
+        initData();
+        render();
+    </script>
+
+    <footer style="margin-top: 40px; padding: 20px; text-align: center; color: #888; font-size: 0.9rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">Built by Shobhit Bhuwania<span style="color: #00ffb2; font-weight: 500;"></div>
+            </footer>
+
+</body>
+</html>

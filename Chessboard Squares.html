@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chessboard Square Counter (Detailed)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000000;
+            color: #ffffff;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro', 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .total-counter {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .total-counter-label {
+            font-size: 1rem;
+            color: #888;
+            font-weight: 500;
+        }
+
+        .canvas-container {
+            background: #0a0a0a;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: center;
+        }
+
+        #squareCanvas {
+            display: block;
+            max-width: 100%;
+        }
+
+        /* Grid for the 8 counters */
+        .counters {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 30px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .counter-card {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .counter-card:hover {
+            border-color: #555;
+            background: #161616;
+            transform: translateY(-2px);
+        }
+
+        .counter-card.active {
+            border-width: 1px;
+            background: #1a1a1a;
+        }
+
+        .counter-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .counter-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .counter-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover { background: #222; border-color: #444; }
+        .btn:active { transform: scale(0.98); }
+        .btn.primary { background: #333; border-color: #555; }
+
+        /* Speed Controller Styling */
+        .speed-control-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            max-width: 300px;
+            margin-bottom: 30px;
+        }
+
+        .speed-label {
+            font-size: 0.8rem;
+            color: #888;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #3B82F6;
+        }
+
+        .progress-container {
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 30px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #222;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #3B82F6;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        @media (max-width: 600px) {
+            .counters {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>CHESSBOARD COUNTER</h1>
+    <p class="subtitle">Detailed breakdown by size (1x1 to 8x8)</p>
+
+    <div class="total-counter">
+        <span class="total-counter-label">TOTAL:</span>
+        <span id="totalCountTop">0</span>
+        <span class="total-counter-label" style="margin-left: 10px; font-size: 1.5rem;">/ 204</span>
+    </div>
+
+    <div class="progress-container">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="squareCanvas" width="400" height="400"></canvas>
+    </div>
+
+    <div class="counters">
+        <div class="counter-card" data-size="1">
+            <div class="counter-label">1x1 Squares</div>
+            <div class="counter-value">
+                <span class="counter-dot" style="background: #3B82F6;"></span>
+                <span id="count-1">0</span>
+            </div>
+        </div>
+        <div class="counter-card" data-size="2">
+            <div class="counter-label">2x2 Squares</div>
+            <div class="counter-value">
+                <span class="counter-dot" style="background: #10B981;"></span>
+                <span id="count-2">0</span>
+            </div>
+        </div>
+        <div class="counter-card" data-size="3">
+            <div class="counter-label">3x3 Squares</div>
+            <div class="counter-value">
+                <span class="counter-dot" style="background: #F59E0B;"></span>
+                <span id="count-3">0</span>
+            </div>
+        </div>
+        <div class="counter-card" data-size="4">
+            <div class="counter-label">4x4 Squares</div>
+            <div class="counter-value">
+                <span class="counter-dot" style="background: #EF4444;"></span>
+                <span id="count-4">0</span>
+            </div>
+        </div>
+        <div class="counter-card" data-size="5">
+            <div class="counter-label">5x5 Squares</div>
+            <div class="counter-value">
+                <span class="counter-dot" style="background: #8B5CF6;"></span>
+                <span id="count-5">0</span>
+            </div>
+        </div>
+        <div class="counter-card" data-size="6">
+            <div class="counter-label">6x6 Squares</div>
+            <div class="counter-value">
+                <span class="counter-dot" style="background: #EC4899;"></span>
+                <span id="count-6">0</span>
+            </div>
+        </div>
+        <div class="counter-card" data-size="7">
+            <div class="counter-label">7x7 Squares</div>
+            <div class="counter-value">
+                <span class="counter-dot" style="background: #06B6D4;"></span>
+                <span id="count-7">0</span>
+            </div>
+        </div>
+        <div class="counter-card" data-size="8">
+            <div class="counter-label">8x8 Squares</div>
+            <div class="counter-value">
+                <span class="counter-dot" style="background: #F43F5E;"></span>
+                <span id="count-8">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" id="prevBtn">◀ PREV</button>
+        <button class="btn primary" id="playBtn">▶ PLAY</button>
+        <button class="btn" id="nextBtn">NEXT ▶</button>
+        <button class="btn" id="resetBtn">↺ RESET</button>
+    </div>
+
+    <div class="speed-control-container">
+        <div class="speed-label">Playback Speed: <span id="speedValue">2x</span></div>
+        <input type="range" id="speedSlider" min="50" max="1000" value="500" step="50">
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const COLORS = {
+            1: '#3B82F6', 2: '#10B981', 3: '#F59E0B', 4: '#EF4444', 
+            5: '#8B5CF6', 6: '#EC4899', 7: '#06B6D4', 8: '#F43F5E',
+            boardLight: '#2a2a2a', boardDark: '#111111'
+        };
+
+        const canvas = document.getElementById('squareCanvas');
+        const ctx = canvas.getContext('2d');
+        const GRID_SIZE = 8;
+        const CELL_SIZE = canvas.width / GRID_SIZE;
+
+        // --- STATE ---
+        const steps = [];
+        let currentStep = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let playbackDelay = 500; // Default delay (linked to slider)
+        
+        const categoryStarts = {}; 
+        const categoryEnds = {};
+
+        // --- BUILD DATA ---
+        function buildSteps() {
+            let stepIndex = 0;
+            for (let size = 1; size <= 8; size++) {
+                categoryStarts[size] = stepIndex;
+                const limit = GRID_SIZE - size + 1;
+                for (let y = 0; y < limit; y++) {
+                    for (let x = 0; x < limit; x++) {
+                        steps.push({ size: size, x: x, y: y, color: COLORS[size] });
+                        stepIndex++;
+                    }
+                }
+                categoryEnds[size] = stepIndex;
+            }
+        }
+        buildSteps();
+
+        // --- DRAWING ---
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    const isDark = (row + col) % 2 === 1;
+                    ctx.fillStyle = isDark ? COLORS.boardDark : COLORS.boardLight;
+                    ctx.fillRect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    ctx.strokeStyle = '#222';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+        }
+
+        function drawHighlight(step) {
+            const x = step.x * CELL_SIZE;
+            const y = step.y * CELL_SIZE;
+            const size = step.size * CELL_SIZE;
+            ctx.save();
+            ctx.shadowColor = step.color;
+            ctx.shadowBlur = 20;
+            ctx.strokeStyle = step.color;
+            ctx.lineWidth = 4;
+            ctx.strokeRect(x, y, size, size);
+            ctx.fillStyle = step.color + '40';
+            ctx.fillRect(x, y, size, size);
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 14px Inter";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.shadowBlur = 0;
+            ctx.fillText(`${step.size}x${step.size}`, x + size/2, y + size/2);
+            ctx.restore();
+        }
+
+        function render() {
+            drawBoard();
+            if (currentStep > 0 && currentStep <= steps.length) {
+                drawHighlight(steps[currentStep - 1]);
+            }
+        }
+
+        // --- LOGIC ---
+        function updateUI() {
+            document.getElementById('progressFill').style.width = `${(currentStep / steps.length) * 100}%`;
+            document.getElementById('totalCountTop').textContent = currentStep;
+
+            let counts = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0};
+            for (let i = 0; i < currentStep; i++) { counts[steps[i].size]++; }
+
+            for (let s = 1; s <= 8; s++) {
+                document.getElementById(`count-${s}`).textContent = counts[s];
+            }
+
+            document.querySelectorAll('.counter-card').forEach(card => {
+                card.classList.remove('active');
+                card.style.borderColor = '#333';
+                card.style.boxShadow = 'none';
+            });
+
+            if (currentStep > 0 && currentStep <= steps.length) {
+                const currentSize = steps[currentStep - 1].size;
+                const activeCard = document.querySelector(`.counter-card[data-size="${currentSize}"]`);
+                if (activeCard) {
+                    activeCard.classList.add('active');
+                    activeCard.style.borderColor = COLORS[currentSize];
+                    activeCard.style.boxShadow = `0 0 15px ${COLORS[currentSize]}40`;
+                }
+            }
+            document.getElementById('playBtn').textContent = isPlaying ? '⏸ PAUSE' : '▶ PLAY';
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length) {
+                currentStep++;
+                render();
+                updateUI();
+            } else {
+                stopPlay();
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) {
+                currentStep--;
+                render();
+                updateUI();
+            }
+        }
+
+        function startPlay() {
+            if (currentStep >= steps.length) currentStep = 0;
+            isPlaying = true;
+            updateUI();
+            runInterval();
+        }
+
+        // Logic to allow dynamic speed changing while playing
+        function runInterval() {
+            if (!isPlaying) return;
+            playInterval = setTimeout(() => {
+                nextStep();
+                if (isPlaying && currentStep < steps.length) {
+                    runInterval();
+                }
+            }, playbackDelay);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            clearTimeout(playInterval);
+            updateUI();
+        }
+
+        function togglePlay() {
+            if (isPlaying) stopPlay();
+            else startPlay();
+        }
+
+        function reset() {
+            stopPlay();
+            currentStep = 0;
+            render();
+            updateUI();
+        }
+
+        // Speed Logic: Higher delay = slower speed. 
+        // We invert the slider value logic for a natural "Left is slow, Right is fast" feel.
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValueDisplay = document.getElementById('speedValue');
+        
+        speedSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            // Invert the range so 1000 is fast (small delay) and 50 is slow (large delay)
+            playbackDelay = 1050 - val; 
+            
+            // Map the value to a readable multiplier (approx)
+            let multiplier = (val / 250).toFixed(1);
+            speedValueDisplay.textContent = multiplier + 'x';
+        });
+
+        // Jump to specific category
+        document.querySelectorAll('.counter-card').forEach(card => {
+            card.addEventListener('click', () => {
+                stopPlay();
+                const size = parseInt(card.dataset.size);
+                currentStep = categoryEnds[size];
+                render();
+                updateUI();
+            });
+        });
+
+        // Event Listeners
+        document.getElementById('playBtn').addEventListener('click', togglePlay);
+        document.getElementById('nextBtn').addEventListener('click', nextStep);
+        document.getElementById('prevBtn').addEventListener('click', prevStep);
+        document.getElementById('resetBtn').addEventListener('click', reset);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') nextStep();
+            if (e.key === 'ArrowLeft') prevStep();
+            if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+            if (e.key.toLowerCase() === 'r') reset();
+        });
+
+        // Init
+        render();
+        updateUI();
+    </script>
+
+    <footer style="margin-top: 40px; padding: 20px; text-align: center; color: #888; font-size: 0.9rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">Built by Shobhit Bhuwania<span style="color: #00ffb2; font-weight: 500;"></div>
+    </footer>
+
+</body>
+</html>
